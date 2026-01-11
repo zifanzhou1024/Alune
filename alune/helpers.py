@@ -58,39 +58,56 @@ def get_resource_path(relative_path: str | None = None):
     return str(path)
 
 
-def is_version_string_newer(version_one: str, version_two: str, ignore_minor_mismatch: bool = False):
+def is_version_string_newer(version_one: str, version_two: str):
     """
     Checks if version_one is newer than version_two.
 
     Args:
         version_one: The semantic version string to check.
         version_two: The semantic version string to check against.
-        ignore_minor_mismatch: Optional, whether to ignore that the minor version mismatches. Defaults to false.
 
     Returns:
         Whether version_one is newer than version_two.
     """
-    version_one_parts = version_one.split(".")
-    version_two_parts = version_two.split(".")
+    try:
+        version_one_parts = [int(part) for part in version_one.split(".")]
+        version_two_parts = [int(part) for part in version_two.split(".")]
+    except ValueError:
+        logger.warning(
+            f"We could not check version {version_one} against {version_two}. "
+            f"Assuming the installed version ({version_two}) is newer."
+        )
+        return False
+
     version_part_amount = min(len(version_one_parts), len(version_two_parts))
 
     for i in range(version_part_amount):
-        try:
-            if int(version_one_parts[i]) <= int(version_two_parts[i]):
-                continue
+        version_one_part = version_one_parts[i]
+        version_two_part = version_two_parts[i]
 
-            if ignore_minor_mismatch and i == version_part_amount - 1:
-                logger.warning("There is a newer minor version of TFT available. Please update as soon as possible.")
-                return False
+        if version_one_part == version_two_part:
+            continue
 
-            return True
-        except ValueError:
-            logger.warning(
-                f"We could not check version {version_one} against {version_two}. "
-                f"Assuming the installed version ({version_two}) is newer."
-            )
-            return False
-    return False
+        return version_one_part > version_two_part
+
+    return len(version_one_parts) > len(version_two_parts)
+
+
+def get_major_version(version: str) -> int | None:
+    """
+    Extracts the major version component from a semantic version string.
+
+    Args:
+        version: The semantic version string to parse.
+
+    Returns:
+        The major version as an int, or None if it could not be parsed.
+    """
+    try:
+        return int(version.split(".")[0])
+    except (IndexError, ValueError):
+        logger.warning(f"Could not parse major version from {version}.")
+        return None
 
 
 def raise_and_exit(error: str, exit_code: int = 1) -> None:
@@ -98,8 +115,8 @@ def raise_and_exit(error: str, exit_code: int = 1) -> None:
     Raise the given text as an error and then exit the application
 
     Args:
-        error: The image we should look at.
-        exit_code: The relative or absolute path to the image to be found. Defaults to 1.
+        error: The error message to log before exiting.
+        exit_code: The exit code to use when terminating the application. Defaults to 1.
     """
     logger.error(error)
     logger.warning("Due to an error, we are exiting Alune in 10 seconds. You can find all logs in alune-output/logs.")
