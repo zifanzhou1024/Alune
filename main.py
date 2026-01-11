@@ -86,8 +86,15 @@ async def check_phone_preconditions(adb_instance: ADB):
         )
         play_store_version = installed_version
 
-    if helpers.is_version_string_newer(play_store_version, installed_version, ignore_minor_mismatch=True):
-        raise_and_exit("A new major version of the TFT app is available. An update is required.")
+    if helpers.is_version_string_newer(play_store_version, installed_version):
+        play_store_major = helpers.get_major_version(play_store_version)
+        installed_major = helpers.get_major_version(installed_version)
+        if play_store_major is None or installed_major is None:
+            logger.warning("Could not parse TFT version numbers to enforce major-version requirements.")
+        elif play_store_major > installed_major:
+            raise_and_exit("A new major version of the TFT app is available. An update is required.")
+        else:
+            logger.warning("A newer non-major version of the TFT app is available. Please update when possible.")
 
     logger.debug("Checking if TFT is active")
     if not await adb_instance.is_tft_active():
