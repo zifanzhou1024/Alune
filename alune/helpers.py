@@ -76,14 +76,17 @@ def is_version_string_newer(version_one: str, version_two: str, ignore_minor_mis
 
     for i in range(version_part_amount):
         try:
-            if int(version_one_parts[i]) <= int(version_two_parts[i]):
+            version_one_part = int(version_one_parts[i])
+            version_two_part = int(version_two_parts[i])
+
+            if version_one_part == version_two_part:
                 continue
 
-            if ignore_minor_mismatch and i == version_part_amount - 1:
+            if ignore_minor_mismatch and i > 0:
                 logger.warning("There is a newer minor version of TFT available. Please update as soon as possible.")
                 return False
 
-            return True
+            return version_one_part > version_two_part
         except ValueError:
             logger.warning(
                 f"We could not check version {version_one} against {version_two}. "
