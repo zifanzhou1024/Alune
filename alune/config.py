@@ -108,8 +108,9 @@ class AluneConfig:
         Sanitize the user configured game mode by checking against valid values.
         """
         game_mode = self._config.get("game_mode", "normal")
-        if game_mode not in {"normal"}:
-            logger.warning(f"The configured game mode '{game_mode}' does not exist. Playing 'normal' instead.")
+        valid_game_modes = {"normal", "revival"}
+        if game_mode not in valid_game_modes:
+            logger.warning(f"The configured game mode '{game_mode}' does not exist. Setting to 'normal'.")
             self._config["game_mode"] = "normal"
 
     def _sanitize_traits(self):

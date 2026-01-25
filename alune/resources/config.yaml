@@ -7,7 +7,7 @@ log_level: "INFO"
 # Currently valid game modes: normal
 # Please note that changing this may require changing traits as well.
 #game_mode: "normal"
-game_mode: "revival: festival of beasts"
+game_mode: "revival"
 # Timeout for the bot to stay in the queue. 
 # This is the maximum time the bot will wait in the queue before it will exit the queue, in seconds.
 queue_timeout: 150
