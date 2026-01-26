@@ -34,6 +34,7 @@ class GameState(StrEnum):
     IN_GAME = auto()
     POST_GAME = auto()
     CHOICE_CONFIRM = auto()
+    CONTINUE_GAME = auto()
 
 
 @dataclass
@@ -157,6 +158,9 @@ class TFTApp:
             case GameState.POST_GAME:
                 logger.info("App state is post game, clicking 'Play again'.")
                 await self.adb.click_button(Button.play)
+            case GameState.CONTINUE_GAME:
+                logger.info("App state is continue game, clicking 'Continue'.")
+                await self.adb.click_button(Button.back_button)
 
     # pylint: disable-next=too-many-return-statements
     async def get_app_state(self, screenshot: ndarray) -> GameStateImageResult | None:
@@ -177,10 +181,10 @@ class TFTApp:
         ):
             return GameStateImageResult(GameState.MAIN_MENU)
 
-        if image_result := screen.get_on_screen(screenshot, Image.NORMAL_GAME):
+        if image_result := screen.get_on_screen(screenshot, Image.REVIVAL_GAME):
             return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
 
-        if image_result := screen.get_on_screen(screenshot, Image.REVIVAL_GAME):
+        if image_result := screen.get_on_screen(screenshot, Image.NORMAL_GAME):
             return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
 
         if screen.get_button_on_screen(screenshot, Button.check):
@@ -205,6 +209,9 @@ class TFTApp:
 
         if screen.get_on_screen(screenshot, Image.FIRST_PLACE) and screen.get_on_screen(screenshot, Image.BACK):
             return GameStateImageResult(GameState.POST_GAME)
+
+        if screen.get_on_screen(screenshot, Image.CONTINUE_GAME) and screen.get_on_screen(screenshot, Image.BACK):
+            return GameStateImageResult(GameState.CONTINUE_GAME)
 
         return None
 

@@ -147,6 +147,8 @@ class Image(StrEnum):
     PHASE_3_2_FULL = auto()
     NORMAL_GAME = auto()
     REVIVAL_GAME = auto()
+    CONTINUE_GAME = auto()
+    
 
 
 class Trait(StrEnum):
@@ -251,6 +253,7 @@ class Button:
     """
 
     # Buttons with an image, the variable name must be the same as the image name.
+    back_button = ImageButton(BoundingBox(10, 10, 210, 60))
     play = ImageButton(BoundingBox(950, 600, 1200, 650))
     accept = ImageButton(BoundingBox(525, 520, 755, 545))
     exit_queue = ImageButton(BoundingBox(800, 610, 870, 680))
