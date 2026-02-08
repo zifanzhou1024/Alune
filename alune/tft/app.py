@@ -210,7 +210,9 @@ class TFTApp:
         if screen.get_on_screen(screenshot, Image.FIRST_PLACE) and screen.get_on_screen(screenshot, Image.BACK):
             return GameStateImageResult(GameState.POST_GAME)
 
-        if screen.get_on_screen(screenshot, Image.CONTINUE_GAME) and screen.get_on_screen(screenshot, Image.BACK):
+        # if screen.get_on_screen(screenshot, Image.CONTINUE_GAME) and screen.get_on_screen(screenshot, Image.BACK):
+        #     return GameStateImageResult(GameState.CONTINUE_GAME)
+        if screen.get_on_screen(screenshot, Image.BACK):
             return GameStateImageResult(GameState.CONTINUE_GAME)
 
         return None

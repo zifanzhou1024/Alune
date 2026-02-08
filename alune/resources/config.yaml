@@ -42,7 +42,7 @@ screen_record:
 chances:
   # The chance % to buy experience per check - configuring 50 means it's a 50% chance.
   # Alune will never try to buy XP when it can't.
-  buy_xp: 50
+  buy_xp: 75
 
 
 # Override the default ADB port Alune tries to connect to.
