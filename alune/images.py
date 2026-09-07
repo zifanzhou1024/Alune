@@ -146,6 +146,7 @@ class Image(StrEnum):
     COLLAPSE_TOP_BAR = auto()
     PHASE_3_2_FULL = auto()
     NORMAL_GAME = auto()
+    NORMAL_LOBBY = auto()
     REVIVAL_GAME = auto()
     CONTINUE_GAME = auto()
     OPENGL_UPDATE_NOTICE = auto()
@@ -261,6 +262,10 @@ class Button:
 
     # Buttons with an image, the variable name must be the same as the image name.
     back_button = ImageButton(BoundingBox(10, 10, 210, 60))
+    play_current = ImageButton(BoundingBox(1000, 610, 1135, 655), capture_area=BoundingBox(960, 585, 1180, 675))
+    cancel_queue_current = ImageButton(BoundingBox(773, 617, 803, 647), capture_area=BoundingBox(735, 585, 840, 680))
+    start = ImageButton(BoundingBox(1000, 610, 1135, 655), capture_area=BoundingBox(960, 585, 1180, 675))
+    normal_mode = ImageButton(BoundingBox(430, 160, 585, 290), capture_area=BoundingBox(300, 260, 950, 355))
     play = ImageButton(BoundingBox(950, 600, 1200, 650))
     accept = ImageButton(BoundingBox(525, 520, 755, 545))
     exit_queue = ImageButton(BoundingBox(800, 610, 870, 680))

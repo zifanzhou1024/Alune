@@ -15,6 +15,7 @@ from adb_shell.adb_device_async import AdbDeviceTcpAsync
 from adb_shell.adb_device_async import BaseTransportAsync
 from adb_shell.auth.keygen import keygen
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
+from adb_shell.exceptions import AdbTimeoutError
 from adb_shell.exceptions import TcpTimeoutException
 from adb_shell.exceptions import UsbDeviceNotFoundError
 from adb_shell.exceptions import UsbReadFailedError
@@ -390,9 +391,19 @@ class ADB:  # pylint: disable=too-many-instance-attributes disable=too-many-publ
         Returns:
             The ndarray containing the gray-scaled pixels.
         """
-        image_bytes_str = await self._device.exec_out("screencap -p", decode=False)
-        raw_image = numpy.frombuffer(image_bytes_str, dtype=numpy.uint8)
-        return cv2.imdecode(raw_image, cv2.IMREAD_GRAYSCALE)
+        for attempt in range(3):
+            image_bytes = await self._device.exec_out("screencap -p", decode=False)
+            if image_bytes:
+                try:
+                    frame = cv2.imdecode(numpy.frombuffer(image_bytes, dtype=numpy.uint8), cv2.IMREAD_GRAYSCALE)
+                except cv2.error:
+                    frame = None
+                if frame is not None:
+                    return frame
+            logger.warning("ADB returned an empty or invalid screenshot; retrying.")
+            if attempt < 2:
+                await asyncio.sleep(0.5)
+        raise AdbTimeoutError("ADB did not return a valid screenshot after three attempts")
 
     async def click_image(
         self,
@@ -446,9 +457,8 @@ class ADB:  # pylint: disable=too-many-instance-attributes disable=too-many-publ
             x: The x coordinate where to tap.
             y: The y coordinate where to tap.
         """
-        # input tap x y comes with the downtime of tapping too fast for the game sometimes,
-        # so we swipe on the same coordinate to simulate a longer press with a random duration.
-        await self._wrap_shell_call(f"input swipe {x} {y} {x} {y} {self._random.randint(60, 120)}")
+        # TFT buttons require a tap; stationary swipes can be ignored by the client.
+        await self._wrap_shell_call(f"input tap {x} {y}")
 
     async def get_android_sdk(self) -> int:
         """
@@ -512,7 +522,17 @@ class ADB:  # pylint: disable=too-many-instance-attributes disable=too-many-publ
         """
         Start TFT using the activity manager (am).
         """
-        await self._wrap_shell_call(f"am start -n {self.tft_package_name}/{self._tft_activity_name}")
+        resolved = await self._wrap_shell_call(
+            "cmd package resolve-activity --brief -a android.intent.action.MAIN "
+            f"-c android.intent.category.LAUNCHER {self.tft_package_name}"
+        )
+        component = next(
+            (line.strip() for line in resolved.splitlines() if line.strip().startswith(self.tft_package_name + "/")),
+            f"{self.tft_package_name}/{self._tft_activity_name}",
+        )
+        output = await self._wrap_shell_call(f"am start -n {component}")
+        if "Error" in output or "Exception" in output:
+            raise RuntimeError(f"Could not launch TFT: {output.strip()}")
 
     async def get_tft_version(self) -> str:
         """

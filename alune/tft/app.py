@@ -64,6 +64,9 @@ class TFTApp:
     def _is_lobby(self, screenshot: ndarray) -> bool:
         """Return whether the screenshot shows the active TFT lobby."""
         return bool(
+            screen.get_button_on_screen(screenshot, Button.start)
+            and screen.get_on_screen(screenshot, Image.NORMAL_LOBBY)
+        ) or bool(
             screen.get_on_screen(screenshot, Image.INVITE_FRIENDS)
             and screen.get_on_screen(screenshot, Image.TEAM_PLANNER)
             and screen.get_button_on_screen(screenshot, Button.play)
@@ -92,11 +95,12 @@ class TFTApp:
     async def exit_queue_if_active(self):
         """Exit queue only when the queued-state indicator is still visible."""
         screenshot = await self.adb.get_screen()
-        if not screen.get_on_screen(screenshot, Image.CANCEL_QUEUE):
+        current_cancel = screen.get_button_on_screen(screenshot, Button.cancel_queue_current)
+        if not current_cancel and not screen.get_on_screen(screenshot, Image.CANCEL_QUEUE):
             logger.info("Queue wait ended outside the queued state; leaving recovery to the main state loop.")
             return
 
-        await self.adb.click_button(Button.exit_queue)
+        await self.adb.click_button(Button.cancel_queue_current if current_cancel else Button.exit_queue)
         logger.info("Queue exited due to timeout.")
 
     async def queue(self):
@@ -167,6 +171,8 @@ class TFTApp:
                 await self.adb.click_button(Button.play)
                 await self.queue()
                 logger.info("Queue lock released, likely loading into game now.")
+            case GameState.IN_QUEUE:
+                await self.queue()
             case GameState.IN_GAME:
                 logger.info("App state is in game, looping decision making and waiting for the exit button.")
                 screenshot = await self.adb.get_screen()
@@ -221,8 +227,17 @@ class TFTApp:
             if image_result := screen.get_on_screen(screenshot, Image.REVIVAL_GAME):
                 return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
 
+        if self.config.get_game_mode() == "normal":
+            if image_result := screen.get_button_on_screen(screenshot, Button.normal_mode):
+                return GameStateImageResult(GameState.CHOOSE_MODE, image_result)
+
         if image_result := screen.get_on_screen(screenshot, Image.NORMAL_GAME):
             return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
+
+        if screen.get_button_on_screen(screenshot, Button.accept) or screen.get_button_on_screen(
+            screenshot, Button.cancel_queue_current
+        ):
+            return GameStateImageResult(GameState.IN_QUEUE)
 
         if self._is_lobby(screenshot):
             return GameStateImageResult(GameState.LOBBY)
@@ -237,7 +252,10 @@ class TFTApp:
         if screen.get_button_on_screen(screenshot, Button.check):
             return GameStateImageResult(GameState.QUEUE_MISSED)
 
-        if screen.get_button_on_screen(screenshot, Button.play) and not screen.get_on_screen(screenshot, Image.BACK):
+        if (
+            screen.get_button_on_screen(screenshot, Button.play_current)
+            or screen.get_button_on_screen(screenshot, Button.play)
+        ) and not screen.get_on_screen(screenshot, Image.BACK):
             return GameStateImageResult(GameState.MAIN_MENU)
 
         if screen.get_on_screen(screenshot, Image.COMPOSITION) or screen.get_on_screen(screenshot, Image.ITEMS):

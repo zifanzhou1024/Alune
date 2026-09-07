@@ -12,6 +12,7 @@ from urllib.error import HTTPError
 from urllib.error import URLError
 import urllib.request
 
+from adb_shell.exceptions import AdbTimeoutError
 from adb_shell.exceptions import TcpTimeoutException
 from adb_shell.exceptions import UsbReadFailedError
 from adb_shell.exceptions import UsbWriteFailedError
@@ -41,7 +42,7 @@ async def loop_disconnect_wrapper(adb_instance: ADB, alune_config: AluneConfig):
     tft_app = TFTApp(adb_instance, alune_config)
     try:
         await tft_app.loop()
-    except (TcpTimeoutException, UsbReadFailedError, UsbWriteFailedError):
+    except (AdbTimeoutError, TcpTimeoutException, UsbReadFailedError, UsbWriteFailedError):
         logger.warning("ADB device was disconnected, attempting one reconnect...")
         adb_instance.mark_screen_record_for_close()
         await adb_instance.load()
