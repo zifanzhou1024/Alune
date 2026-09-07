@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from enum import auto
 from enum import StrEnum
 
-import keyboard
 from loguru import logger
 from numpy import ndarray
+from pynput import keyboard
 
 from alune import screen
 from alune.adb import ADB
@@ -35,6 +35,7 @@ class GameState(StrEnum):
     POST_GAME = auto()
     CHOICE_CONFIRM = auto()
     CONTINUE_GAME = auto()
+    OPENGL_UPDATE_NOTICE = auto()
 
 
 @dataclass
@@ -60,28 +61,60 @@ class TFTApp:
         self._play_next_game = True
         self.setup_hotkeys()
 
-    async def wait_for_accept_button(self):
+    def _is_lobby(self, screenshot: ndarray) -> bool:
+        """Return whether the screenshot shows the active TFT lobby."""
+        return bool(
+            screen.get_on_screen(screenshot, Image.INVITE_FRIENDS)
+            and screen.get_on_screen(screenshot, Image.TEAM_PLANNER)
+            and screen.get_button_on_screen(screenshot, Button.play)
+        )
+
+    async def wait_for_accept_button(self) -> bool:
         """
-        Utility method to wait for the queue accept button.
+        Wait for the queue accept button while the client is still in queue.
+
+        Returns:
+            True when the accept button is visible. False when the queue ends before
+            an accept prompt appears, allowing the main state loop to recover.
         """
-        screenshot = await self.adb.get_screen()
-        search_result = screen.get_button_on_screen(screenshot, Button.accept)
-        while not search_result:
-            await asyncio.sleep(2)
+        while True:
             screenshot = await self.adb.get_screen()
-            search_result = screen.get_button_on_screen(screenshot, Button.accept)
+            if screen.get_button_on_screen(screenshot, Button.accept):
+                return True
+
+            # A declined queue can either return to the lobby or show a confirmation.
+            # Do not keep waiting for an accept dialog in either state.
+            if screen.get_button_on_screen(screenshot, Button.check) or self._is_lobby(screenshot):
+                return False
+
+            await asyncio.sleep(2)
+
+    async def exit_queue_if_active(self):
+        """Exit queue only when the queued-state indicator is still visible."""
+        screenshot = await self.adb.get_screen()
+        if not screen.get_on_screen(screenshot, Image.CANCEL_QUEUE):
+            logger.info("Queue wait ended outside the queued state; leaving recovery to the main state loop.")
+            return
+
+        await self.adb.click_button(Button.exit_queue)
+        logger.info("Queue exited due to timeout.")
 
     async def queue(self):
         """
         Utility method to queue a match.
         """
-        # TODO We can refactor this to use the new queue buttons for better detection
         try:
-            await asyncio.wait_for(self.wait_for_accept_button(), timeout=self.config.get_queue_timeout())
+            accept_button_visible = await asyncio.wait_for(
+                self.wait_for_accept_button(), timeout=self.config.get_queue_timeout()
+            )
         except asyncio.TimeoutError:
-            await self.adb.click_button(Button.exit_queue)
-            logger.info("Queue exited due to timeout.")
+            await self.exit_queue_if_active()
             return
+
+        if not accept_button_visible:
+            logger.info("Queue ended before an accept prompt appeared; returning to the main state loop.")
+            return
+
         await self.adb.click_button(Button.accept)
         await asyncio.sleep(2)
 
@@ -94,11 +127,13 @@ class TFTApp:
         await asyncio.sleep(3)
 
         screenshot = await self.adb.get_screen()
-        if screen.get_button_on_screen(screenshot, Button.accept) or screen.get_button_on_screen(
-            screenshot, Button.play
-        ):
-            logger.debug("Queue was declined by someone else, staying in queue lock state")
-            await self.queue()
+        if screen.get_button_on_screen(screenshot, Button.check):
+            logger.info("Queue was declined, acknowledging the confirmation.")
+            await self.adb.click_button(Button.check)
+            return
+
+        if self._is_lobby(screenshot):
+            logger.info("Queue returned to the lobby; returning to the main state loop to re-queue.")
 
     async def take_app_decision(self, game_state_image_result: GameStateImageResult):
         """
@@ -118,6 +153,9 @@ class TFTApp:
             case GameState.CHOICE_CONFIRM:
                 logger.info("App state is choice confirm, accepting the choice.")
                 await self.adb.click_button(Button.check_choice)
+            case GameState.OPENGL_UPDATE_NOTICE:
+                logger.info("Dismissing TFT's OpenGL-update notice.")
+                await self.adb.click_button(Button.opengl_update_ok)
             case GameState.CHOOSE_MODE:
                 logger.info(f"App state is choose mode, selecting {self.config.get_game_mode()}.")
                 await self.adb.click_image(game_state_image_result.image_result)
@@ -173,28 +211,20 @@ class TFTApp:
         if screen.get_button_on_screen(screenshot, Button.check_choice):
             return GameStateImageResult(GameState.CHOICE_CONFIRM)
 
+        if screen.get_on_screen(screenshot, Image.OPENGL_UPDATE_NOTICE):
+            return GameStateImageResult(GameState.OPENGL_UPDATE_NOTICE)
+
         if screen.get_on_screen(screenshot, Image.RITO_LOGO):
             return GameStateImageResult(GameState.LOADING)
 
-        if screen.get_on_screen(screenshot, Button.play.image_path) and not screen.get_on_screen(
-            screenshot, Image.BACK
-        ):
-            return GameStateImageResult(GameState.MAIN_MENU)
-
-        if image_result := screen.get_on_screen(screenshot, Image.REVIVAL_GAME):
-            return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
+        if self.config.get_game_mode() == "revival":
+            if image_result := screen.get_on_screen(screenshot, Image.REVIVAL_GAME):
+                return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
 
         if image_result := screen.get_on_screen(screenshot, Image.NORMAL_GAME):
             return GameStateImageResult(game_state=GameState.CHOOSE_MODE, image_result=image_result)
 
-        if screen.get_button_on_screen(screenshot, Button.check):
-            return GameStateImageResult(GameState.QUEUE_MISSED)
-
-        if (
-            screen.get_on_screen(screenshot, Image.INVITE_FRIENDS)
-            and screen.get_on_screen(screenshot, Image.TEAM_PLANNER)
-            and screen.get_button_on_screen(screenshot, Button.play)
-        ):
+        if self._is_lobby(screenshot):
             return GameStateImageResult(GameState.LOBBY)
 
         if (
@@ -203,6 +233,12 @@ class TFTApp:
             and screen.get_on_screen(screenshot, Image.CANCEL_QUEUE)
         ):
             return GameStateImageResult(GameState.IN_QUEUE)
+
+        if screen.get_button_on_screen(screenshot, Button.check):
+            return GameStateImageResult(GameState.QUEUE_MISSED)
+
+        if screen.get_button_on_screen(screenshot, Button.play) and not screen.get_on_screen(screenshot, Image.BACK):
+            return GameStateImageResult(GameState.MAIN_MENU)
 
         if screen.get_on_screen(screenshot, Image.COMPOSITION) or screen.get_on_screen(screenshot, Image.ITEMS):
             return GameStateImageResult(GameState.IN_GAME)
@@ -286,5 +322,13 @@ class TFTApp:
         """
         Setup hotkey listeners
         """
-        keyboard.add_hotkey("alt+p", self.toggle_pause)
-        keyboard.add_hotkey("alt+n", self.toggle_play_next_game)
+        self._hotkeys = keyboard.GlobalHotKeys(
+            {
+                "<alt>+p": self.toggle_pause,
+                "<alt>+n": self.toggle_play_next_game,
+            }
+        )
+        self._hotkeys.start()
+        logger.info("Hotkeys:\
+            \n\t<alt> + p\t-\tToggle the bot pausing all actions\
+            \n\t<alt> + n\t-\tToggle the bot re-queueing after a game")

@@ -8,7 +8,7 @@ log_level: "DEBUG"
 # Please note that changing this may require changing traits as well.
 #game_mode: "normal"
 game_mode: "revival"
-# Timeout for the bot to stay in the queue. 
+# Timeout for the bot to stay in the queue.
 # This is the maximum time the bot will wait in the queue before it will exit the queue, in seconds.
 queue_timeout: 150
 
@@ -17,8 +17,8 @@ queue_timeout: 150
 # For example: admin, star_guardian, mecha_prime, lasercorps
 # For a full list of valid traits, visit https://github.com/TeamFightTacticsBots/Alune/tree/main/alune/images/traits
 traits:
-  - arcanist
-  - targon
+  - vanguard
+  - sniper
 
 # Determines whether the bot should surrender as soon as possible (after round 3-1)
 # Valid values : true, false
@@ -44,13 +44,30 @@ chances:
   # Alune will never try to buy XP when it can't.
   buy_xp: 75
 
+adb:
+  # Override the default ADB host and port Alune tries to connect to.
+  # This is helpful if you are running TFT on a real device.
+  # When running an emulator, this should most likely be localhost.
+  host: localhost
 
-# Override the default ADB port Alune tries to connect to.
-# If there is no device listening on this port, a scan will happen to find your device.
-adb_port: 5555
+  # If there is no device listening on this port AND host is set to localhost,
+  # a scan will happen to find your device.
+  port: 5555
+
+  # Prefer connecting to a physical device over USB using ADB.
+  # If true, this setting takes precedence over the TCP options above.
+  prefer_usb: false
+
+  # Device serial to use for the USB ADB connection.
+  # Only needed if multiple devices are connected.
+  # If null, the first available device is selected automatically (usually what you want).
+  serial_port: null
+
+  # If prefer_usb is true but the USB connection fails, fall back to a TCP connection.
+  tcp_fallback: true
 
 # Changing these below values manually can potentially break the bot, so don't!
 # Version of the YAML.
-version: 12
+version: 15
 # Version of the TFT set.
-set: 16
+set: 17

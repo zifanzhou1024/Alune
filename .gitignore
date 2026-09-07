@@ -1,5 +1,7 @@
 # Editor files
 .idea/
+.vscode/
+.zed/
 
 # Environments
 *venv/
@@ -20,3 +22,6 @@ alune-output/
 
 # Dev tooling
 CLAUDE.md
+
+# Local capture/extraction scratch files
+/tmp/

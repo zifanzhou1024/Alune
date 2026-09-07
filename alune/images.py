@@ -148,7 +148,7 @@ class Image(StrEnum):
     NORMAL_GAME = auto()
     REVIVAL_GAME = auto()
     CONTINUE_GAME = auto()
-    
+    OPENGL_UPDATE_NOTICE = auto()
 
 
 class Trait(StrEnum):
@@ -170,37 +170,44 @@ class Trait(StrEnum):
         Returns:
             A list of the traits to be played by default, if the user misconfigures.
         """
-        return [cls.YORDLE, cls.ARCANIST]
+        return [cls.VANGUARD, cls.SNIPER]
 
-    ARCANIST = auto()
-    BILGEWATER = auto()
-    BRUISER = auto()
-    CHRONOKEEPER = auto()
-    DARKCHILD = auto()
-    DEFENDER = auto()
-    DEMACIA = auto()
-    DISRUPTOR = auto()
-    EMPEROR = auto()
-    FREJORD = auto()
-    GUNSLINGER = auto()
-    INVOKER = auto()
-    IONIA = auto()
-    IXTAL = auto()
-    JUGGERNAUT = auto()
-    LONGSHOT = auto()
-    NOXUS = auto()
-    PILTOVER = auto()
-    QUICKSTRIKER = auto()
-    SHADOWISLES = auto()
-    SHURIMA = auto()
-    SLAYER = auto()
-    SOULDBOUND = auto()
-    TARGON = auto()
-    VANQUISHER = auto()
-    VOID = auto()
-    WARDEN = auto()
-    YORDLE = auto()
-    ZAUN = auto()
+    # ANIMA = auto()  # TODO: capture real mobile shop trait icon
+    ARBITER = auto()
+    BASTION = auto()
+    BRAWLER = auto()
+    # BULWARK = auto()  # TODO: capture real mobile shop trait icon
+    CHALLENGER = auto()
+    CHOOSE_TRAIT = auto()
+    # COMMANDER = auto()  # TODO: capture real mobile shop trait icon
+    CONDUIT = auto()
+    DARK_LADY = auto()
+    DARK_STAR = auto()
+    # DIVINE_DUELIST = auto()  # TODO: capture real mobile shop trait icon
+    # DOOMER = auto()  # TODO: capture real mobile shop trait icon
+    # ERADICATOR = auto()  # TODO: capture real mobile shop trait icon
+    # FACTORY_NEW = auto()  # TODO: capture real mobile shop trait icon
+    FATEWEAVER = auto()
+    # GALAXY_HUNTER = auto()  # TODO: capture real mobile shop trait icon
+    GUN_GODDESS = auto()
+    MARAUDER = auto()
+    MECHA = auto()
+    MEEPLE = auto()
+    N_O_V_A = auto()
+    ORACLE = auto()
+    # PARTY_ANIMAL = auto()  # TODO: capture real mobile shop trait icon
+    PRIMORDIAN = auto()
+    PSIONIC = auto()
+    REDEEMER = auto()
+    REPLICATOR = auto()
+    ROGUE = auto()
+    SHEPHERD = auto()
+    SNIPER = auto()
+    SPACE_GROOVE = auto()
+    STARGAZER = auto()
+    TIMEBREAKER = auto()
+    VANGUARD = auto()
+    VOYAGER = auto()
 
 
 class ClickButton:  # pylint: disable=too-few-public-methods
@@ -258,12 +265,16 @@ class Button:
     accept = ImageButton(BoundingBox(525, 520, 755, 545))
     exit_queue = ImageButton(BoundingBox(800, 610, 870, 680))
     exit_now = ImageButton(
-        click_box=BoundingBox(550, 425, 740, 440),
-        capture_area=BoundingBox(520, 400, 775, 425),
+        click_box=BoundingBox(550, 425, 740, 455),
+        capture_area=BoundingBox(520, 400, 775, 460),
     )
-    check = ImageButton(BoundingBox(555, 425, 725, 470))
+    check = ImageButton(
+        click_box=BoundingBox(555, 425, 725, 470),
+        capture_area=BoundingBox(500, 370, 780, 500),
+    )
     check_surrender = ImageButton(BoundingBox(650, 420, 825, 470))
     check_choice = ImageButton(BoundingBox(655, 423, 829, 472))
+    opengl_update_ok = ClickButton(BoundingBox(550, 420, 730, 476))
     buy_xp = ImageButton(
         click_box=BoundingBox(35, 593, 124, 682),
         capture_area=BoundingBox(9, 550, 170, 708),
